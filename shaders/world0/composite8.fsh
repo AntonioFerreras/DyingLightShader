@@ -19,6 +19,7 @@ uniform mat4 gbufferPreviousProjection;
 uniform float viewHeight;
 uniform float viewWidth; 
 uniform float day; 
+uniform float fog;
 uniform float sunrise; 
 uniform vec2 resolution;
 
@@ -104,7 +105,7 @@ void main() {
 	//Are ya winning Sun??
 	float depth = texture2D(depthtex0, texcoord.st).r;
 	vec3 depthDir = normalize(getDepthPoint(texcoord.st, depth));
-	color += sampleSun(depthDir)*float(depth == 1.0);
+	color += sampleSun(depthDir)*float(depth == 1.0) * (1.0-fog);
 
 /* DRAWBUFFERS:06 */
 	gl_FragData[0] = vec4(color, 1.0); //gcolor
