@@ -12,11 +12,14 @@ uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelView;
 uniform mat4 gbufferModelViewInverse;
 uniform vec3 cameraPosition;
+uniform vec3 sunPosition;
 uniform vec3 previousCameraPosition;
 uniform mat4 gbufferPreviousModelView;
 uniform mat4 gbufferPreviousProjection;
 uniform float viewHeight;
 uniform float viewWidth; 
+uniform float day; 
+uniform float sunrise; 
 uniform vec2 resolution;
 
 varying vec2 texcoord;
@@ -26,6 +29,9 @@ const bool colortex6Clear = false;
 vec2 invRes = 1.0/resolution;
 
 #include "/lib/utility/common_functions.glsl"
+#include "/lib/math.glsl"
+#include "/lib/view.glsl"
+#include "/lib/sun.glsl"
 #include "/lib/taa_functions.glsl"
 
 /******************  SUN & TAA & EXPOSURE ******************/
@@ -94,6 +100,11 @@ void main() {
 	#else
 	float exposure = 1.0;
 	#endif
+
+	//Are ya winning Sun??
+	float depth = texture2D(depthtex0, texcoord.st).r;
+	vec3 depthDir = normalize(getDepthPoint(texcoord.st, depth));
+	color += sampleSun(depthDir)*float(depth == 1.0);
 
 /* DRAWBUFFERS:06 */
 	gl_FragData[0] = vec4(color, 1.0); //gcolor

@@ -23,6 +23,7 @@ uniform float morning;
 uniform float wetness;
 uniform float fog;
 uniform float frameTimeCounter;
+uniform float viewHeight, viewWidth;
 
 varying vec2 texcoord;
 

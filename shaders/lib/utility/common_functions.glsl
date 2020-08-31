@@ -46,6 +46,12 @@ float Luminance(in vec3 color)
 #define pow16(x) (pow4(x) * pow4(x))
 #define pow32(x) (pow16(x) * pow16(x))
 #define pow64(x) (pow32(x) * pow32(x))
+#define pow128(x) (pow64(x) * pow64(x))
+#define pow256(x) (pow128(x) * pow128(x))
+#define pow512(x) (pow256(x) * pow256(x))
+#define pow2048(x) (pow512(x) * pow512(x) * pow512(x) * pow512(x))
+#define pow4096(x) (pow2048(x) * pow2048(x))
+#define pow8192(x) (pow4096(x) * pow4096(x))
 
 // Dithering functions
 float bayer2(vec2 a){
