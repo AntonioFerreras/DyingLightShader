@@ -64,20 +64,6 @@ varying vec2 texcoord;
 #include "/lib/volumetrics.glsl"
 #include "/lib/raytracing.glsl"
 
-// vec4 samplePanoramic(vec3 worldPos, float lodLevel) {
-// 	worldPos = normalize(worldPos);
-
-// 	float theta = atan(worldPos.y, worldPos.x);
-//     if(theta < 0.0) {
-//         theta = 2.0*PI + theta;
-//     }
-//     float phi = acos(worldPos.z);
-
-// 	vec2 sampleUV = vec2(phi / PI, theta / (2.0*PI));
-
-//     return textureLod(colortex7, sampleUV, lodLevel);
-// }
-
 vec3 dayLightCol = blackbody(DAY_EMITTER_TEMP)*0.1;
 vec3 nightLightCol = vec3(0, 2, 117)/255.0 * 2.0;
 vec3 lightCol = mix(dayLightCol, nightLightCol, pow4(night));

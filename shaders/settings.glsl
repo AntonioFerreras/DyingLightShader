@@ -41,7 +41,7 @@
 
 //Ambient occlusion
 #define AMBIENT_INTENSITY 1.0 // [0.5 0.75 1.0 1.25 1.5 1.75 2.0]
-#define RTAO_ENABLED // Ray traced Ambient Occlusion
+// #define RTAO_ENABLED // Ray traced Ambient Occlusion
 
 //Block light
 #define EMITTER_INTENSITY 1.0 // Brightness of light emitting blocks // [0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0 2.2 2.4 2.6 2.8 3.0 3.5 4.0]

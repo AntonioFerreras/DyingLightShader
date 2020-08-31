@@ -28,7 +28,7 @@ vec2 invRes = 1.0/resolution;
 #include "/lib/utility/common_functions.glsl"
 #include "/lib/taa_functions.glsl"
 
-/******************  TAA & EXPOSURE ******************/
+/******************  SUN & TAA & EXPOSURE ******************/
 
 //From Raspberry by Rutherin <3
 float calculateAverageLuminance() {
