@@ -8,7 +8,7 @@ varying vec2 texcoord;
 varying vec4 glcolor;
 
 void main() {
-	vec4 color = vec4(vec3(0.9), texture2D(texture, texcoord).a) * glcolor;
+	vec4 color = vec4(vec3(0.9), texture2D(texture, texcoord).a*0.6) * glcolor;
 	color *= texture2D(lightmap, lmcoord);
 
 /* DRAWBUFFERS:0 */
