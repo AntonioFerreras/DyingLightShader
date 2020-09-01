@@ -64,7 +64,7 @@ varying vec2 texcoord;
 #include "/lib/volumetrics.glsl"
 #include "/lib/raytracing.glsl"
 
-vec3 dayLightCol = blackbody(DAY_EMITTER_TEMP)*0.1;
+vec3 dayLightCol = blackbody(DAY_EMITTER_TEMP)*EMITTER_INTENSITY*0.1;
 vec3 nightLightCol = vec3(0, 2, 117)/255.0 * 2.0;
 #ifdef NIGHT_TIME_UV
 vec3 lightCol = mix(dayLightCol, nightLightCol, pow4(night));

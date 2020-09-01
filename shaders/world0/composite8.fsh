@@ -40,7 +40,7 @@ vec2 invRes = 1.0/resolution;
 //From Raspberry by Rutherin <3
 float calculateAverageLuminance() {
     const float maxLumaRange  = 1.5;
-    const float minLumaRange  = 0.01;
+    const float minLumaRange  = 0.001;
     const float exposureDecay = 0.01*EXPOSURE_SPEED;
 
     float avglod = int(exp2(min(viewWidth, viewHeight))) - 1;
