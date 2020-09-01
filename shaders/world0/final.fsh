@@ -108,7 +108,7 @@ void main() {
 
     // ditherScreen(color);
 
-    // color = textureLod(colortex7, texcoord.st, 7.0).rgb;
+    // color = vec3(textureLod(colortex1, texcoord.st, 0.0).a);
 
 
     gl_FragColor = vec4(color.rgb, 1.0f);

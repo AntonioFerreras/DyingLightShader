@@ -1,4 +1,4 @@
-int volumetricSteps = 4;
+int volumetricSteps = FOG_QUALITY;
 
 float volumetricMarch(vec3 ro, vec3 rd, vec3 rayEnd, float dither) {
     if(fog < 0.01 || day < 0.001) {

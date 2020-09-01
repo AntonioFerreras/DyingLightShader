@@ -34,6 +34,7 @@ uniform float viewHeight;
 uniform float viewWidth;
 uniform float near;
 uniform float far;
+uniform float farDist;
 uniform float sunset; 
 uniform float night; 
 uniform float sunrise; 
@@ -214,7 +215,7 @@ void main() {
 
 	if(length(reflectionPos) < length(depthViewPoint)) {//all(lessThan(panoramicSample.rgb, vec3(0.0))) || 
 		reflectionCol = sampleSky(viewToWorld(reflectedDir), vec3(0,6372e3,0), normalize(viewToWorld(sunPosition)), normalize(viewToWorld(moonPosition)), false);
-		reflectionCol = applyFog(reflectionCol, far, depthWorldPoint, viewToWorld(reflectedDir), 1.0); // Apply fog to sky sample
+		reflectionCol = applyFog(reflectionCol, farDist, depthWorldPoint, viewToWorld(reflectedDir), 1.0); // Apply fog to sky sample
 	}
 	// if(all(equal(reflectionPos, vec4(0.0)))) {
 	// 	// vec3 sampleDir = approxParallax(depthViewPoint, reflectedDir);

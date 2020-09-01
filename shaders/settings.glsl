@@ -22,6 +22,7 @@
 
 #define FOG_INTENSITY 1.0 // How intense the morning and rain fog is [0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0]
 #define FOG_OFFSET -50 // The height offset for atmosphere fog [-120 -110 -100 -90 -80-70 -60 -50 -40 -30 -20 -10 0 10 20 30 40 50 60 70 80 90 100 120 140 160 180 200 220]
+#define FOG_QUALITY 8 // Number of fog ray steps [2 4 8 12]
 
 #define PLANET_RADIUS 6371e3
 #define ATMOSPHERE_RADIUS 6471e3
@@ -46,6 +47,7 @@
 //Block light
 #define EMITTER_INTENSITY 1.0 // Brightness of light emitting blocks // [0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0 2.2 2.4 2.6 2.8 3.0 3.5 4.0]
 #define DAY_EMITTER_TEMP 3000 // The temperature in Kelvin (K) of light emitting blocks during daytime. Lower = Oranger, Higher = Bluer[3000 3500 4000 4100 4200 4300 4400 4500 4600 4700 4800 4900 5000 5100 5200 5300 5400 5500 5600 5700 5800 5900 6000 6100 6200 6300 6400 6500 6600 6700 6800 6900 7000 7100 7200 7300 7400 7500 7600 7700 7800 7900 8000] 
+#define NIGHT_TIME_UV // Emitters turn purple (UV) at night
 
 //Material options
 //water

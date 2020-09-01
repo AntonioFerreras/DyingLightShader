@@ -35,7 +35,7 @@ uniform vec3 sunPosition;
 uniform vec3 moonPosition;
 uniform vec3 cameraPosition; 
 uniform float frameTimeCounter;
-uniform float far;    
+uniform float farDist;    
 
 varying vec2 texcoord;
 
@@ -90,8 +90,8 @@ void main() {
 
 	if(all(equal(texture2D(colortex7, texcoord).rgb, vec3(0.0)))) {
 		color = sampleSky(rayDir, vec3(0,6372e3,0), normalize(viewToWorld(sunPosition)), normalize(viewToWorld(moonPosition)), false);
-		color = applyFog(color, far, cameraPosition, viewToWorld(rayDir), 1.0);//Apply fog to sky sample
-		dist = far;
+		color = applyFog(color, farDist, cameraPosition, viewToWorld(rayDir), 1.0);//Apply fog to sky sample
+		dist = farDist;
 	}
 	
 

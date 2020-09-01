@@ -66,7 +66,11 @@ varying vec2 texcoord;
 
 vec3 dayLightCol = blackbody(DAY_EMITTER_TEMP)*0.1;
 vec3 nightLightCol = vec3(0, 2, 117)/255.0 * 2.0;
+#ifdef NIGHT_TIME_UV
 vec3 lightCol = mix(dayLightCol, nightLightCol, pow4(night));
+#else
+vec3 lightCol = dayLightCol;
+#endif
 // const vec3 dayAmbient = mix(vec3(12, 17, 51)/255.0, vec3(0.5), 0.99)*0.18;
 const vec3 nightAmbient = vec3(9, 16, 41)/255.0 * 0.03;
 
