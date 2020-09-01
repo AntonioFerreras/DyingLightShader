@@ -86,7 +86,7 @@ void main() {
 	vec2 velocity = (texcoord - reprojectedCoord)/invRes;
 	float weight = clamp01(1.0 - sqrt(length(velocity))/2.0) * TAA_WEIGHT;
 
-	color = mix(color, clampedHist, weight);
+	color = mix(color, clampedHist, max(weight, 0.5));
 	historyWrite = color;
 
 	#else

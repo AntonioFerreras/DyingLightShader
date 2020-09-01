@@ -41,9 +41,9 @@ void main() {
     //Specular mapping
     vec3 specularity = calculateSpecularMaps(texcoord.st);
 
-/* DRAWBUFFERS:0234 */
+/* DRAWBUFFERS:0 */ //234
 	gl_FragData[0] = vec4(0.0); //gcolor
-	gl_FragData[1] = vec4(normal* 0.5 + 0.5, 1.0); //gnormal
-    gl_FragData[2] = vec4(specularity, 1.0); //gnormal
-	gl_FragData[3] = vec4(lmcoord, 0.0, 0.0); //colortex4
+	// gl_FragData[1] = vec4(normal* 0.5 + 0.5, 1.0); //gnormal
+    // gl_FragData[2] = vec4(specularity, 1.0); //gnormal
+	// gl_FragData[3] = vec4(lmcoord, 0.0, 0.0); //colortex4
 }

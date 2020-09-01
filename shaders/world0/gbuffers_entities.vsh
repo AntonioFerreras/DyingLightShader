@@ -46,6 +46,7 @@ void main() {
 	float groundDistFromCam = length(worldSpacePos.xz);
 	
 	highlight = 0.0;
+	#ifdef SURVIVOR_SENSE_ENABLED
 	if(length(worldSpacePos) < 40.0 && entityId == 2000) {
 		if(groundDistFromCam < survivorSensePulseDist) {
 			float distToPulse = min(survivorSensePulseDist - groundDistFromCam, 12.0);
@@ -53,6 +54,7 @@ void main() {
 			gl_Position.z *= 0.01;
 		}
 	}
+	#endif
 	
 	#ifdef TAA_ENABLED
     gl_Position.xy += jitter(2.0) * gl_Position.w;

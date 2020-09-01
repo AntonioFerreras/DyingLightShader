@@ -45,6 +45,7 @@ void main() {
     vec3 depthWorldPoint = viewToWorld(depthViewPoint);
 
    //Apply survivor sense
+   #ifdef SURVIVOR_SENSE_ENABLED
    if(depth < 0.9999999999) {
         float groundDepthDist = length(depthWorldPoint.xz);
 
@@ -52,6 +53,7 @@ void main() {
 
         color = mix(color, vec3(SURVIVOR_SENSE_R, SURVIVOR_SENSE_G, SURVIVOR_SENSE_B), survPulse*survivorSenseFalloff()*0.4*SURVIVOR_SENSE_INTENSITY);
    }
+   #endif
 
    //Apply translucents
    vec3 transMask = decode3x16(texture2D(colortex4, texcoord).b);
