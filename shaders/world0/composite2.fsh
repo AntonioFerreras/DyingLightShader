@@ -64,7 +64,6 @@ varying vec2 texcoord;
 /******************  SPECULAR RAY MARCH PASS  ******************/
 
 void main() {
-
 	vec2 uv = texcoord * invSpecularResScale;
 
 	if(texture2D(colortex4, uv).a >= 0.2 || any(greaterThan(texcoord, vec2(specularResScale)))) {
@@ -94,7 +93,7 @@ void main() {
 	vec3 depthViewDir = normalize(depthViewPoint);
 	vec3 depthWorldDir = normalize(depthWorldPoint);
 
-	if(depth == 1.0) {
+	if(depth == 1.0 || length(normal) < 0.01) {
 		discard;
 	}
 

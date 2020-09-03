@@ -122,7 +122,7 @@ void main() {
 		if(isMetal(specTex.g)) {
 	    	color = mix(color, specularCol, fresnel);
 		} else {
-			color +=specularCol*fresnel;
+			color += specularCol*fresnel;
 		}
 	} else {
 	    color += max(sunSpecular*fresnel, 0.0);

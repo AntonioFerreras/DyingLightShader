@@ -35,7 +35,9 @@ vec4 getTangentNormals(vec2 coord) {
 }
 
 void main() {
-	vec4 color = texture2D(texture, texcoord) * glcolor;
+	vec4 color = texture2D(texture, texcoord);
+    color.rgba *= glcolor.rgba;
+    
 	//color *= texture2D(lightmap, lmcoord);
 
 	//Normal mapping
@@ -56,7 +58,7 @@ void main() {
     subsurface = sign(isLeaves)*1.0 + sign(isPlant)*1.6 + sign(isTopPlant)*1.59 + sign(isFence)*0.1;
     
 /* DRAWBUFFERS:0234 */
-	gl_FragData[0] = color; //gcolor
+	gl_FragData[0] = vec4(color.rgb, color.a); //gcolor
 	gl_FragData[1] = vec4(normal* 0.5 + 0.5, encodedFlatNormal); //gnormal
 	gl_FragData[2] = vec4(specularity.rg, sign(isEmissive), subsurface); //colortex3
 	gl_FragData[3] = vec4(lmcoord, 0.0, 0.0); //colortex4

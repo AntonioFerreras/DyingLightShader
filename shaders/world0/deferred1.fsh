@@ -9,6 +9,7 @@ const bool colortex7MipmapEnabled = true;
 uniform sampler2D gcolor;
 uniform sampler2D depthtex0;
 uniform sampler2D gnormal;
+uniform sampler2D noisetex;
 uniform sampler2D colortex1;
 uniform sampler2D colortex3;
 uniform sampler2D colortex4;
@@ -28,6 +29,7 @@ uniform mat4 shadowProjection;
 uniform vec3 shadowLightPosition;
 uniform mat4 shadowModelView;
 uniform mat4 shadowModelViewInverse;    
+uniform float frameTimeCounter;
 uniform float far;
 uniform float day;
 uniform float fog;
@@ -172,7 +174,11 @@ void main() {
 	#endif
 	
 	//SUNLIGHT
-	vec3 sunLight = directLight(depth0ViewPoint, normal, sunShadow) * (1.0-fog);
+	float noise_1 = fract(texture2D(noisetex, mod(gl_FragCoord.xy, 512.0)/512.0).r + frameTimeCounter*4.12348543);
+	float noise_2 = fract(texture2D(noisetex, mod(gl_FragCoord.xy+0.5, 512.0)/512.0).r + frameTimeCounter*4.12348543);
+	float noise_3 = fract(texture2D(noisetex, mod(gl_FragCoord.xy-0.5, 512.0)/512.0).r + frameTimeCounter*4.12348543);
+	vec3 noise = vec3(noise_1, noise_2, noise_3) * 2.0 - 1.0; // -1 to 1
+	vec3 sunLight = directLight(depth0ViewPoint+noise*0.02, normal, sunShadow) * (1.0-fog);
 	// vec3 foggedSunLight = applyFog(sunLight, 9999.0, depth0WorldPoint + cameraPosition, viewToWorld(sunDir), 1.0);
 	// sunLight = mix(sunLight, foggedSunLight, sunShadow);
 		
@@ -180,7 +186,7 @@ void main() {
 	float ao = texture2D(gcolor, texcoord).a;
 	vec3 dayAmbient = mix(texture2D(colortex5, vec2(1.0)).rgb, vec3(0.15), 0.75);
 	vec3 ambient = mix(dayAmbient, nightAmbient, pow(night, 0.5));//*1.3
-	ambient = ambient*pow2(lm.y*ao)*AMBIENT_INTENSITY;
+	ambient = ambient*pow2(lm.y)*ao*AMBIENT_INTENSITY;
 	vec3 blockLight = pow2(lm.x)*lightCol*EMITTER_INTENSITY;
 
 	//Subsurface
@@ -188,7 +194,7 @@ void main() {
 		float y = mod(depth0WorldPoint.y + cameraPosition.y + gbufferModelViewInverse[3].y, 1.0);
 		subsurfaceAmount *= pow(1.5*y, 2.0) + 0.15;
 	}
-	vec3 subsurface = subsurface(depth0ViewPoint, sunDir) * subsurfaceAmount * max(1.0-fog, 0.1);
+	vec3 subsurface = subsurface(depth0ViewPoint+noise*0.02, sunDir) * subsurfaceAmount * max(1.0-fog, 0.1);
 
 	//EMission
 	vec3 emission = pow(length(albedo), 4.0) * isEmissive * lightCol * 30.0 * albedo;

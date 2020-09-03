@@ -80,7 +80,6 @@ float shadowFast(vec3 p, vec3 n) {
 }
 
 float shadow(vec3 p, vec3 n) {
-	
     float lightDot = dot(n, normalize(sunPosition));
     if(lightDot > 0.0) {
         vec4 playerPos = gbufferModelViewInverse * vec4(p, 1.0);
