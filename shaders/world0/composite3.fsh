@@ -106,7 +106,7 @@ void main() {
 	vec3 sunSpecular = ggx(normal, -depthViewDir, normalize(sunPosition), specular, albedo)*sunCol*SUN_BRIGHTNESS*sunShadow * (1.0-fog)*0.2;
 
 	//Apply albedo tint
-	reflectionCol = mix(reflectionCol*albedo*albedo, reflectionCol, float(!isMetal(specTex.g)));
+	reflectionCol = mix(reflectionCol*schlick3(depthViewDir, normal, albedo*albedo*specular.y), reflectionCol, float(!isMetal(specTex.g)));
 
 	float volumetricRadiance = texture2D(colortex1, texcoord).a;
 	if(specular.r < 0.6) {

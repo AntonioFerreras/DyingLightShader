@@ -85,7 +85,13 @@ vec3 parseSpecular(vec3 data) {
 
 float schlick(vec3 incident, vec3 normal, vec3 specularity) {
     float F0 = specularity.y;
-    float cosTheta = dot(-incident, normal);
+    float cosTheta = clamp(dot(-incident, normal), 0.0, 1.0);
+
+    return clamp(F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0), 0.0, 1.0);
+}
+
+vec3 schlick3(vec3 incident, vec3 normal, vec3 F0) {
+    float cosTheta = clamp(dot(-incident, normal), 0.0, 1.0);
 
     return clamp(F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0), 0.0, 1.0);
 }
