@@ -12,6 +12,7 @@ varying vec2 lmcoord;
 varying vec2 texcoord;
 varying vec4 glcolor;
 varying float highlight;
+varying float isPlayer;
 
 varying mat3 tbnMatrixWorld;
 attribute vec4 at_tangent;
@@ -47,13 +48,22 @@ void main() {
 	
 	highlight = 0.0;
 	#ifdef SURVIVOR_SENSE_ENABLED
-	if(length(worldSpacePos) < 40.0 && entityId == 2000) {
-		if(groundDistFromCam < survivorSensePulseDist) {
-			float distToPulse = min(survivorSensePulseDist - groundDistFromCam, 12.0);
-			highlight = distToPulse/12.0;
-			gl_Position.z *= 0.01;
-		}
-	}
+
+		#ifdef SURVIVOR_SENSE_ALWAYS_ACTIVE
+			if(length(worldSpacePos) < 40.0 && (entityId == 2000 || entityId == 2001)) {	
+				highlight = 1.0;
+				gl_Position.z *= 0.01;
+			}	
+		#else
+			if(length(worldSpacePos) < 40.0 && (entityId == 2000 || entityId == 2001)) {
+				if(groundDistFromCam < survivorSensePulseDist) {
+					float distToPulse = min(survivorSensePulseDist - groundDistFromCam, 12.0);
+					highlight = distToPulse/12.0;
+					gl_Position.z *= 0.01;
+				}
+			}
+		#endif
+	isPlayer = float(entityId == 2001);
 	#endif
 	
 	#ifdef TAA_ENABLED

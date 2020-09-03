@@ -124,7 +124,7 @@ void main() {
 
 	float wetnessAmount = getWetness(depthWorldPoint + cameraPosition, flatNormal, lm.y);
 	
-	if(texture2D(colortex4, uv).a >= 0.2 || wetnessAmount < 0.001) {
+	if(texture2D(colortex4, uv).a >= 0.2 || wetnessAmount < 0.005) {
 		/* DRAWBUFFERS:0 */
 		gl_FragData[0] = vec4(texture2D(gcolor, uv).rgb, 1.0); 
 		return;

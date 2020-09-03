@@ -16,6 +16,7 @@ varying vec2 lmcoord;
 varying vec2 texcoord;
 varying vec4 glcolor;
 varying float highlight;
+varying float isPlayer;
 varying mat3 tbnMatrixWorld;
 
 #include "/lib/math.glsl"
@@ -60,7 +61,7 @@ void main() {
 		//float outline = clamp(float(mod(gl_FragCoord.x, 40.0) < 15.0), 0.5, 0.7);
 		//color.rgb = mix(color.rgb, vec3(255., 132., 31.)/255., outline * highlight);
 		vec3 baseColour = vec3(0.03);
-		vec3 emissionColour = vec3(255, 111, 0)/255.;
+		vec3 emissionColour = mix(vec3(255, 111, 0)/255., vec3(0, 115, 255)/255.0, isPlayer);
 
 		vec3 dirToCamera = -rayDirection(gl_FragCoord.xy/vec2(viewWidth, viewHeight));
 		float facing = dot(normal, dirToCamera);
