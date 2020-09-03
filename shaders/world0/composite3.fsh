@@ -40,6 +40,8 @@ uniform ivec2 eyeBrightness;
 uniform float fog;
 uniform float day;
 uniform float wetness;
+uniform int heldBlockLightValue;
+uniform int heldBlockLightValue2;
 
 varying vec2 texcoord;
 
@@ -110,13 +112,26 @@ void main() {
 
 	float volumetricRadiance = texture2D(colortex1, texcoord).a;
 	if(specular.r < 0.6) {
+		vec3 heldLightSpecular = vec3(0.0);
+        float heldItemLight = float(max(heldBlockLightValue, heldBlockLightValue2));
+        vec3 dayLightCol = blackbody(DAY_EMITTER_TEMP)*EMITTER_INTENSITY*0.1;
+        vec3 nightLightCol = vec3(0, 2, 117)/255.0 * 2.0;
+        #ifdef NIGHT_TIME_UV
+            vec3 lightCol = mix(dayLightCol, nightLightCol, pow4(night));
+        #else
+            vec3 lightCol = dayLightCol;
+        #endif
+		if(heldItemLight > 0.9) {
+			heldLightSpecular += ggx(normal, -depthViewDir, -depthViewDir, specular, albedo) * heldItemLight * lightCol * exp(-length(depthViewPoint)*0.35) * 0.03;
+		}
+
 	    float flashlightOn = float(night > 0.4 || pow2(eyeBrightness.x+eyeBrightness.y) < 60);
 	    float flashlight = getFlashlight(texcoord, length(depthViewPoint));
 	    vec3 flashlightSpecular = vec3(0.0);
 	    if(flashlightOn > 0.9) {
 	    	flashlightSpecular = ggx(normal, -depthViewDir, -depthViewDir, specular, albedo)*flashlightOn*min(flashlight, 0.6)*FLASLIGHT_BRIGHTNESS;
 	    }
-	    vec3 specularCol = applyFog(reflectionCol + sunSpecular + flashlightSpecular, length(depthWorldPoint), cameraPosition, normalize(depthWorldPoint), volumetricRadiance);//Apply fog to speculars
+	    vec3 specularCol = applyFog(reflectionCol + sunSpecular + flashlightSpecular + heldLightSpecular, length(depthWorldPoint), cameraPosition, normalize(depthWorldPoint), volumetricRadiance);//Apply fog to speculars
 	    // color = mix(color, specularCol, fresnel);
 		// color += albedo*specularCol;
 		if(isMetal(specTex.g)) {
