@@ -66,7 +66,7 @@ void main() {
 		float facing = dot(normal, dirToCamera);
 		color.rgb = mix(emissionColour, baseColour, smoothstep(0.0, 1.0, facing))*brightness*highlight*1.3;
 
-		normal = vec3(999.0);
+		normal = vec3(0.0);
 	}
 
 	normal = viewToWorld(normal);

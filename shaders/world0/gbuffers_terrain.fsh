@@ -36,7 +36,6 @@ vec4 getTangentNormals(vec2 coord) {
 
 void main() {
 	vec4 color = texture2D(texture, texcoord) * glcolor;
- 
 	//color *= texture2D(lightmap, lmcoord);
 
 	//Normal mapping

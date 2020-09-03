@@ -41,14 +41,12 @@ uniform float fog;
 uniform float day;
 uniform float wetness;
 uniform float frameTimeCounter;
-uniform int frameCounter;
 
 varying vec2 texcoord;
 
 #include "/settings.glsl"
 #include "/lib/utility/common_functions.glsl"
 #include "/lib/utility/constants.glsl"
-#include "/lib/resScales.glsl"
 #include "/lib/math.glsl"
 #include "/lib/view.glsl"
 #include "/lib/sky.glsl"
@@ -59,34 +57,55 @@ varying vec2 texcoord;
 #include "/lib/encoding.glsl"
 #include "/lib/volumetrics.glsl"
 #include "/lib/raytracing.glsl"
-#include "/lib/taa_shit.glsl"
 
-/******************  SPECULAR RAY MARCH PASS  ******************/
+/******************  RAIN WETNESS SPECULAR PASS  ******************/
+
+vec2 rand(vec2 c){
+    mat2 m = mat2(12.9898,.16180,78.233,.31415);
+	return fract(sin(m * c) * vec2(43758.5453, 14142.1));
+}
+
+vec2 noise(vec2 p){
+	vec2 co = floor(p);
+	vec2 mu = fract(p);
+	mu = 3.*mu*mu-2.*mu*mu*mu;
+	vec2 a = rand((co+vec2(0.,0.)));
+	vec2 b = rand((co+vec2(1.,0.)));
+	vec2 c = rand((co+vec2(0.,1.)));
+	vec2 d = rand((co+vec2(1.,1.)));
+	return mix(mix(a, b, mu.x), mix(c, d, mu.x), mu.y);
+}
+
+float getWetness(vec3 pos, vec3 normal, float skyLightMap) {
+	float normalElevation = max(viewToWorld(normal).y, 0.0);
+
+	float covered = 28.0/32.0;
+    float uncovered = 31.0/32.0;
+
+    float coverAmount = map(skyLightMap, covered, uncovered, 0.0, 1.0);
+
+	float puddle = noise(pos.xz*0.3).x*0.6 + noise(pos.xz*0.6).x*0.3 + noise(pos.xz*2.0).x*0.1;
+	puddle = pow(puddle, 1.7);
+    return clamp(puddle*pow2(wetness)*coverAmount*normalElevation, 0.0, 1.0);
+}
+
 
 void main() {
+	vec2 uv = texcoord;
 
-	vec2 uv = texcoord * invSpecularResScale;
-
-	if(texture2D(colortex4, uv).a >= 0.2 || any(greaterThan(texcoord, vec2(specularResScale))) || texture2D(depthtex0, uv).r == 1.0) {
-		/* DRAWBUFFERS:01 */
-		gl_FragData[0] = vec4(texture2D(gcolor, uv).rgb, 1.0); 
-		gl_FragData[1] = vec4(vec3(1.0), 1.0); 
-		return;
-	}
 
 	vec3 color = texture2D(gcolor, uv).rgb;
-	vec2 lm = texture2D(colortex4, uv).rg;
 	vec3 normal = texture2D(gnormal, uv).rgb * 2.0 - 1.0;
-	float noise = texture2D(noisetex, mod(gl_FragCoord.xy, 512.0)/512.0).r;
-	float noise_prime = texture2D(noisetex, mod(gl_FragCoord.xy+0.5, 512.0)/512.0).r;
-	float noise_prime_prime = texture2D(noisetex, mod(gl_FragCoord.xy-0.5, 512.0)/512.0).r;
+	// float noise = texture2D(noisetex, mod(gl_FragCoord.xy, 512.0)/512.0).r;
+	// float noise_prime = texture2D(noisetex, mod(gl_FragCoord.xy+0.5, 512.0)/512.0).r;
+	// float noise_prime_prime = texture2D(noisetex, mod(gl_FragCoord.xy-0.5, 512.0)/512.0).r;
 	// normal.x += (noise*2.0-1.0)*0.004;
 	// normal.y += (noise_prime*2.0-1.0)*0.004;
 	// normal.z += (noise_prime_prime*2.0-1.0)*0.004;
-	normal = normalize(normal);
+	// normal = normalize(normal);
 	normal = worldToView(normal);
-	vec3 specTex = texture2D(colortex3, uv).rgb;
-	vec3 specular = parseSpecular(specTex);
+
+
 
 	float depth = texture2D(depthtex0, uv).r;
 	vec3 depthViewPoint = getDepthPoint(uv, depth);
@@ -94,48 +113,65 @@ void main() {
 	vec3 depthViewDir = normalize(depthViewPoint);
 	vec3 depthWorldDir = normalize(depthWorldPoint);
 
-	// if(depth == 1.0) {
-	// 	discard;
-	// }
+	vec2 lm = texture2D(colortex4, uv).rg;
+	vec3 flatNormal = decode3x16(texture2D(gnormal, uv).a) * 2.0 - 1.0;
+	flatNormal = normalize(round(flatNormal));
+	flatNormal = worldToView(flatNormal);
+
+	//Make flat normal have a little bit of affect from actual normal
+	flatNormal = mix(flatNormal, normal, 0.2);
+
+
+	float wetnessAmount = getWetness(depthWorldPoint + cameraPosition, flatNormal, lm.y);
+	
+	if(texture2D(colortex4, uv).a >= 0.2 || wetnessAmount < 0.001) {
+		/* DRAWBUFFERS:0 */
+		gl_FragData[0] = vec4(texture2D(gcolor, uv).rgb, 1.0); 
+		return;
+	}
+
+	if(depth == 1.0 || length(normal) < 0.01) {
+		discard;
+	}
+
+	// normal = constructNormal(depth, uv, depthtex0);
 
 	float seed = random(uv, frameTimeCounter);
 
 	vec3 reflectionCol = vec3(0.0);
 
-	if(specular.r < 0.6) {
-		// vec3 weightSum = vec3(0.0);
+	vec3 reflectedDir = reflect(depthViewDir, flatNormal);
 
-		for(int s = 0; s < SPECULAR_RAYS; s++) {
-			float pdf;
-			vec3 reflectedDir = ggx_sample(normal, -depthViewDir, specular.r, pdf, seed);//reflect(depthViewDir, normal);
-			// vec3 BRDF = ggx(normal, -depthViewDir, reflectedDir, specular, vec3(1.0));
-         	// vec3 weight = BRDF/max(pdf, 1e-5);
         
 		
-			vec3 reflectionPos = vec3(0.0);
+	vec3 reflectionPos = vec3(0.0);
 
-			//Only do reflections on surfaces not too rough
-			// if(reflectedDir.z < 0.0) {
-				reflectionPos = raymarchEqui(depthViewPoint + normal*0.01, reflectedDir).xyz;
-				if(all(equal(reflectionPos, vec3(0.0)))) {
-					float dist = samplePanoramic(viewToWorld(reflectedDir), 0.0).a;
-					reflectionPos = reflectionPos + reflectedDir*dist;
-				}
-			// } else {
-			// 	float dist = samplePanoramic(viewToWorld(reflectedDir), 0.0).a;
-			// 	reflectionPos = reflectionPos + reflectedDir*dist;
-			// }
-			// reflectionCol /= 1.0 + Luminance(reflectionCol);
-			reflectionCol += getReflectionColour(reflectionPos, reflectedDir, depthWorldPoint, 2.0);// * weight; *pow2(samplePanoramic(viewToWorld(reflectedDir), 0.0).a*0.01)
-			// weightSum += weight;
+	//WEtness intensity
+	float fresnel = schlick(depthViewDir, flatNormal, vec3(0.0, 0.02, 0.0));//*getWetness(normal, lm.y);
+	
+
+	//Only do reflections on surfaces not too rough
+	if(reflectedDir.z < 0.0) {
+		reflectionPos = raymarchEquiLONG(depthViewPoint + flatNormal*0.01, reflectedDir).xyz;
+		if(all(equal(reflectionPos, vec3(0.0)))) {
+			float dist = samplePanoramic(viewToWorld(reflectedDir), 0.0).a;
+			reflectionPos = reflectionPos + reflectedDir*dist;
 		}
-		reflectionCol /= SPECULAR_RAYS;//weightSum;//SPECULAR_RAYS;
-		// reflectionCol /= 1.1 + Luminance(reflectionCol);
+	} else {
+		float dist = samplePanoramic(viewToWorld(reflectedDir), 0.0).a;
+		reflectionPos = reflectionPos + reflectedDir*dist;
 	}
+	reflectionCol += getReflectionColour(reflectionPos, reflectedDir, depthWorldPoint, 1.0);
 
+	float volumetricRadiance = texture2D(colortex1, texcoord).a;
 
+	reflectionCol = applyFog(reflectionCol, length(depthWorldPoint), cameraPosition, normalize(depthWorldPoint), volumetricRadiance);//Apply fog to speculars
+	
+	color += reflectionCol*fresnel*wetnessAmount;
 
-/* DRAWBUFFERS:1 */
-	// gl_FragData[0] = vec4(color, 1.0);
-	gl_FragData[0] = vec4(reflectionCol*0.25, 1.0);
+	// color = applyFog(color, length(depthWorldPoint), cameraPosition, normalize(depthWorldPoint), volumetricRadiance);//Apply fog to speculars
+	// color = mix(color, reflectionCol, fresnel*wetness);
+
+/* DRAWBUFFERS:0 */
+	gl_FragData[0] = vec4(color, 1.0);
 }

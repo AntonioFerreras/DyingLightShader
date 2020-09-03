@@ -2,196 +2,112 @@
 
 #extension GL_ARB_shader_texture_lod : enable
 
-/*
-const bool colortex0MipmapEnabled = true;
-const bool colortex7MipmapEnabled = true;
-const int noiseTextureResolution = 512;
-*/
+
 
 uniform sampler2D gcolor;
-uniform sampler2D gnormal;
 uniform sampler2D depthtex0;
-uniform sampler2D colortex1;
-uniform sampler2D colortex3;
-uniform sampler2D colortex4;
-uniform sampler2D colortex5;
-uniform sampler2D colortex7;
-uniform sampler2D noisetex;
+uniform sampler2D colortex6;
 uniform mat4 gbufferProjection;
 uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelView;
 uniform mat4 gbufferModelViewInverse;
-uniform mat4 shadowProjection;
-uniform vec3 shadowLightPosition;
-uniform mat4 shadowModelView;
-uniform mat4 shadowModelViewInverse;    
-uniform vec3 sunPosition;
-uniform vec3 moonPosition;
 uniform vec3 cameraPosition;
-uniform vec3 upPosition;
+uniform vec3 sunPosition;
+uniform vec3 previousCameraPosition;
+uniform mat4 gbufferPreviousModelView;
+uniform mat4 gbufferPreviousProjection;
 uniform float viewHeight;
-uniform float viewWidth;
-uniform float near;
-uniform float far;
-uniform float sunset; 
-uniform float night; 
-uniform float sunrise; 
-uniform ivec2 eyeBrightness;
+uniform float viewWidth; 
+uniform float day; 
 uniform float fog;
-uniform float day;
-uniform float wetness;
-uniform float frameTimeCounter;
+uniform float sunrise; 
+uniform vec2 resolution;
 
 varying vec2 texcoord;
 
-#include "/settings.glsl"
+const bool colortex6Clear = false;
+
+vec2 invRes = 1.0/resolution;
+
 #include "/lib/utility/common_functions.glsl"
-#include "/lib/utility/constants.glsl"
 #include "/lib/math.glsl"
 #include "/lib/view.glsl"
-#include "/lib/sky.glsl"
-#include "/lib/materials.glsl"
-#include "/lib/flashlight.glsl"
 #include "/lib/sun.glsl"
-#include "/lib/shadows.glsl"
-#include "/lib/encoding.glsl"
-#include "/lib/volumetrics.glsl"
-#include "/lib/raytracing.glsl"
+#include "/lib/taa_functions.glsl"
 
-/******************  RAIN WETNESS SPECULAR PASS  ******************/
+/******************  SUN & TAA & EXPOSURE ******************/
 
-vec2 rand(vec2 c){
-    mat2 m = mat2(12.9898,.16180,78.233,.31415);
-	return fract(sin(m * c) * vec2(43758.5453, 14142.1));
-}
+//From Raspberry by Rutherin <3
+float calculateAverageLuminance() {
+    const float maxLumaRange  = 1.5;
+    const float minLumaRange  = 0.001;
+    const float exposureDecay = 0.01*EXPOSURE_SPEED;
 
-vec2 noise(vec2 p){
-	vec2 co = floor(p);
-	vec2 mu = fract(p);
-	mu = 3.*mu*mu-2.*mu*mu*mu;
-	vec2 a = rand((co+vec2(0.,0.)));
-	vec2 b = rand((co+vec2(1.,0.)));
-	vec2 c = rand((co+vec2(0.,1.)));
-	vec2 d = rand((co+vec2(1.,1.)));
-	return mix(mix(a, b, mu.x), mix(c, d, mu.x), mu.y);
-}
+    float avglod = int(exp2(min(viewWidth, viewHeight))) - 1;
 
-vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
-    const vec2 offsetB = vec2(0.0,0.001);
-    const vec2 offsetC = vec2(0.001,0.0);
-  
-    float depthB = texture2D(depthtex, texcoords + offsetB).r;
-    float depthC = texture2D(depthtex, texcoords + offsetC).r;
-  
-    vec3 A = getDepthPoint(texcoords, depthA);
-	vec3 B = getDepthPoint(texcoords + offsetB, depthB);
-	vec3 C = getDepthPoint(texcoords + offsetC, depthC);
+	float averagePrevious = texture2DLod(colortex6, vec2(0.0), 0.0).a;
+    float averageCurrent  = clamp(sqrt(dot(texture2DLod(gcolor, vec2(0.5), avglod).rgb, vec3(0.2125, 0.7154, 0.0721))), minLumaRange, maxLumaRange)*2.5;
 
-	vec3 AB = normalize(B - A);
-	vec3 AC = normalize(C - A);
-
-	vec3 normal =  -cross(AB, AC);
-	// normal.z = -normal.z;
-
-	return normalize(normal);
-}
-
-float getWetness(vec3 pos, vec3 normal, float skyLightMap) {
-	float normalElevation = max(viewToWorld(normal).y, 0.0);
-
-	float covered = 28.0/32.0;
-    float uncovered = 31.0/32.0;
-
-    float coverAmount = map(skyLightMap, covered, uncovered, 0.0, 1.0);
-
-	float puddle = noise(pos.xz*0.3).x*0.6 + noise(pos.xz*0.6).x*0.3 + noise(pos.xz*2.0).x*0.1;
-	puddle = pow(puddle, 1.7);
-    return clamp(puddle*pow2(wetness)*coverAmount*normalElevation, 0.0, 1.0);
+    return mix(averagePrevious, averageCurrent, exposureDecay);
 }
 
 
 void main() {
-	vec2 uv = texcoord;
+	vec3 color;
+	vec3 historyWrite;
+	#ifdef TAA_ENABLED
 
+	vec2 reprojectedCoord = reproject(vec3(texcoord, texture2D(depthtex0, texcoord).r));
 
-	vec3 color = texture2D(gcolor, uv).rgb;
-	vec3 normal = texture2D(gnormal, uv).rgb * 2.0 - 1.0;
-	float noise = texture2D(noisetex, mod(gl_FragCoord.xy, 512.0)/512.0).r;
-	float noise_prime = texture2D(noisetex, mod(gl_FragCoord.xy+0.5, 512.0)/512.0).r;
-	float noise_prime_prime = texture2D(noisetex, mod(gl_FragCoord.xy-0.5, 512.0)/512.0).r;
-	// normal.x += (noise*2.0-1.0)*0.004;
-	// normal.y += (noise_prime*2.0-1.0)*0.004;
-	// normal.z += (noise_prime_prime*2.0-1.0)*0.004;
-	// normal = normalize(normal);
-	normal = worldToView(normal);
+	//Sample fragment colour and history colour
+	color = texture2DLod(gcolor, texcoord, 0.0).rgb;
+	vec3 history = texture2DLod(colortex6, reprojectedCoord, 0.0).rgb;
 
+	//Clamp history in neighbour colours space
+	vec3 topLeft = texture2DLod(gcolor, texcoord + neighbours[0]*invRes, 0.0).rgb;
+	vec3 top = texture2DLod(gcolor, texcoord + neighbours[1]*invRes, 0.0).rgb;
+	vec3 topRight = texture2DLod(gcolor, texcoord + neighbours[2]*invRes, 0.0).rgb;
+	vec3 midLeft = texture2DLod(gcolor, texcoord + neighbours[3]*invRes, 0.0).rgb;
+	vec3 midRight = texture2DLod(gcolor, texcoord + neighbours[4]*invRes, 0.0).rgb;
+	vec3 botLeft = texture2DLod(gcolor, texcoord + neighbours[5]*invRes, 0.0).rgb;
+	vec3 bot = texture2DLod(gcolor, texcoord + neighbours[6]*invRes, 0.0).rgb;
+	vec3 botRight = texture2DLod(gcolor, texcoord + neighbours[7]*invRes, 0.0).rgb;
 
+	vec3 minCol = min(min(min(min(min(min(min(min(topLeft, top), topRight), midLeft), color), midRight), botLeft), bot), botRight); 
+	vec3 maxCol = max(max(max(max(max(max(max(max(topLeft, top), topRight), midLeft), color), midRight), botLeft), bot), botRight); 
 
-	float depth = texture2D(depthtex0, uv).r;
-	vec3 depthViewPoint = getDepthPoint(uv, depth);
-	vec3 depthWorldPoint = viewToWorld(depthViewPoint);
-	vec3 depthViewDir = normalize(depthViewPoint);
-	vec3 depthWorldDir = normalize(depthWorldPoint);
+	// vec3 minCol = min(min(min(min(top, midLeft), color), midRight), bot); 
+	// vec3 maxCol = max(max(max(max(top, midLeft), color), midRight), bot); 
 
-	vec2 lm = texture2D(colortex4, uv).rg;
-	vec3 flatNormal = decode3x16(texture2D(gnormal, uv).a) * 2.0 - 1.0;
-	flatNormal = normalize(round(flatNormal));
-	flatNormal = worldToView(flatNormal);
+	vec3 clampedHist = clamp(history, minCol, maxCol);
+	// float clampAmount = distance(clampedHist, history) / Luminance(history);
 
-	//Make flat normal have a little bit of affect from actual normal
-	flatNormal = mix(flatNormal, normal, 0.2);
+	//Weigh TAA
+	vec2 velocity = (texcoord - reprojectedCoord)/invRes;
+	float weight = clamp01(1.0 - sqrt(length(velocity))/2.0) * TAA_WEIGHT;
 
+	color = mix(color, clampedHist, max(weight, 0.5));
+	historyWrite = color;
 
-	float wetnessAmount = getWetness(depthWorldPoint + cameraPosition, flatNormal, lm.y);
-	
-	if(texture2D(colortex4, uv).a >= 0.2 || wetnessAmount < 0.001 || texture2D(depthtex0, uv).r == 1.0) {
-		/* DRAWBUFFERS:0 */
-		gl_FragData[0] = vec4(texture2D(gcolor, uv).rgb, 1.0); 
-		return;
-	}
+	#else
 
-	// if(depth == 1.0) {
-	// 	discard;
-	// }
+	color = texture2D(gcolor, texcoord).rgb;
+	historyWrite = color;
 
-	// normal = constructNormal(depth, uv, depthtex0);
+	#endif
 
-	float seed = random(uv, frameTimeCounter);
+	#ifdef AUTO_EXPOSURE
+	float exposure = calculateAverageLuminance();
+	#else
+	float exposure = 1.0;
+	#endif
 
-	vec3 reflectionCol = vec3(0.0);
+	//Are ya winning Sun??
+	float depth = texture2D(depthtex0, texcoord.st).r;
+	vec3 depthDir = normalize(getDepthPoint(texcoord.st, depth));
+	color += sampleSun(depthDir)*float(depth == 1.0) * (1.0-fog);
 
-	vec3 reflectedDir = reflect(depthViewDir, flatNormal);
-
-        
-		
-	vec3 reflectionPos = vec3(0.0);
-
-	//WEtness intensity
-	float fresnel = schlick(depthViewDir, flatNormal, vec3(0.0, 0.02, 0.0));//*getWetness(normal, lm.y);
-	
-
-	//Only do reflections on surfaces not too rough
-	if(reflectedDir.z < 0.0) {
-		reflectionPos = raymarchEquiLONG(depthViewPoint + flatNormal*0.01, reflectedDir).xyz;
-		if(all(equal(reflectionPos, vec3(0.0)))) {
-			float dist = samplePanoramic(viewToWorld(reflectedDir), 0.0).a;
-			reflectionPos = reflectionPos + reflectedDir*dist;
-		}
-	} else {
-		float dist = samplePanoramic(viewToWorld(reflectedDir), 0.0).a;
-		reflectionPos = reflectionPos + reflectedDir*dist;
-	}
-	reflectionCol += getReflectionColour(reflectionPos, reflectedDir, depthWorldPoint, 1.0);
-
-	float volumetricRadiance = texture2D(colortex1, texcoord).a;
-
-	reflectionCol = applyFog(reflectionCol, length(depthWorldPoint), cameraPosition, normalize(depthWorldPoint), volumetricRadiance);//Apply fog to speculars
-	
-	color += reflectionCol*fresnel*wetnessAmount;
-
-	// color = applyFog(color, length(depthWorldPoint), cameraPosition, normalize(depthWorldPoint), volumetricRadiance);//Apply fog to speculars
-	// color = mix(color, reflectionCol, fresnel*wetness);
-
-/* DRAWBUFFERS:0 */
-	gl_FragData[0] = vec4(color, 1.0);
+/* DRAWBUFFERS:06 */
+	gl_FragData[0] = vec4(color, 1.0); //gcolor
+	gl_FragData[1] = vec4(historyWrite, exposure); //colortex6
 }

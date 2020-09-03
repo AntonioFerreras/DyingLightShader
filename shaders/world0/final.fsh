@@ -31,7 +31,7 @@ uniform vec3 upPosition;
 
 
 /*
-const int colortex0Format = R11F_G11F_B10F;
+const int colortex0Format = RGBA16F;
 const int colortex1Format = RGBA16F;
 const int colortex2Format = RGBA16_SNORM;
 const int colortex4Format = RGBA16_SNORM;

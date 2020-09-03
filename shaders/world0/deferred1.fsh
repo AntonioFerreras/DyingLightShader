@@ -39,7 +39,7 @@ uniform ivec2 eyeBrightness;
 
 varying vec2 texcoord;
 
-// colortex0 = gcolor = game colour.rgb
+// colortex0 = gcolor = game colour.rgb + vanillaAO.a
 // colortex1 = raytraceColour.rgb + volumetricRadiance.a
 // colortex2 = normals.rgb + flatnormals.a
 // colortex3 = specularity.rg + emission.b + subsurface.a
@@ -134,9 +134,10 @@ void main() {
 	vec4 lm = texture2D(colortex4, texcoord);
 	lm.x = pow(lm.x, 2.2) * 1.3;
 
-	if(length(normal) > 9.0) {
-		/* DRAWBUFFERS:0 */
+	if(length(normal) < 0.01) {
+		/* DRAWBUFFERS:05 */
 		gl_FragData[0] = vec4(toLinear(color), 1.0); //gcolor
+		gl_FragData[1] = vec4(vec3(1.0), 1.0); // colortex5
 		return;
 	}
 
@@ -156,6 +157,7 @@ void main() {
 
 	vec2 velocity = getVelocity();
 
+	//FLASHLIGHT
 	float flashlightOn = float(night > 0.4 || pow2(eyeBrightness.x+eyeBrightness.y) < 60);
 	float flashlight = getFlashlight(texcoord - clamp(velocity*FLASHLIGHT_LAG_AMOUNT, -0.6, 0.6), length(depth0ViewPoint))*clamp(dot(normal, vec3(0,0,1)), 0.2, 1.0)*flashlightOn;
 
@@ -169,15 +171,16 @@ void main() {
 	albedo = vec3(1.0);
 	#endif
 	
+	//SUNLIGHT
 	vec3 sunLight = directLight(depth0ViewPoint, normal, sunShadow) * (1.0-fog);
 	// vec3 foggedSunLight = applyFog(sunLight, 9999.0, depth0WorldPoint + cameraPosition, viewToWorld(sunDir), 1.0);
 	// sunLight = mix(sunLight, foggedSunLight, sunShadow);
 		
-
-	vec3 dayAmbient = mix(texture2D(colortex5, vec2(1.0)).rgb, vec3(0.1), 0.85);
+	//AMBIENT
+	float ao = texture2D(gcolor, texcoord).a;
+	vec3 dayAmbient = mix(texture2D(colortex5, vec2(1.0)).rgb, vec3(0.15), 0.75);
 	vec3 ambient = mix(dayAmbient, nightAmbient, pow(night, 0.5));//*1.3
-	ambient = ambient*pow2(lm.y)*AMBIENT_INTENSITY;
-
+	ambient = ambient*pow2(lm.y*ao)*AMBIENT_INTENSITY;
 	vec3 blockLight = pow2(lm.x)*lightCol*EMITTER_INTENSITY;
 
 	//Subsurface
