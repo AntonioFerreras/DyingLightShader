@@ -112,13 +112,15 @@ float getWaves(vec2 position, int iterations){
     }
     return w / ws;
 }
-vec3 getWaterNormal(vec2 pos, int iter, float depth){
+vec3 getWaterNormal(vec2 pos, int iter, float depth, out float height){
 	pos *= 1.9;
     float e = 0.08;//Epsilon
     vec2 ex = vec2(e, 0);
     float H = getWaves(pos.xy * 0.1, iter) * depth;
     vec3 a = vec3(pos.x, H, pos.y);
-    vec3 normal = normalize(cross(normalize(a-vec3(pos.x - e, getWaves(pos.xy * 0.1 - ex.xy * 0.1, iter) * depth, pos.y)),
+	float firstWave = getWaves(pos.xy * 0.1 - ex.xy * 0.1, iter);
+	height = firstWave;
+    vec3 normal = normalize(cross(normalize(a-vec3(pos.x - e, firstWave * depth, pos.y)),
     normalize(a-vec3(pos.x, getWaves(pos.xy * 0.1 + ex.yx * 0.1, iter) * depth, pos.y + e))));
     return normal;
 }
@@ -163,12 +165,13 @@ void main() {
 	// Water normals
 	vec3 flatNormal = viewToWorld(constructNormal(depth, texcoord, depthtex0));
 	vec3 normal = flatNormal;
+	float waveHeight = 0.0;
 	if(waterOrNah > 0.9) {
 		int iterations = 18;
 		float bias = dot(normalize(upPosition), -depthViewDir);
 		float normalDepth = map(pow(bias, 0.2), 0.0, 1.0, 0.05, 1.0);
 		iterations = int(map(pow(bias, 0.25), 0.0, 1.0, 6.0, 34.0));
-		normal = getWaterNormal((depthWorldPoint + cameraPosition).xz, iterations, normalDepth);
+		normal = getWaterNormal((depthWorldPoint + cameraPosition).xz, iterations, normalDepth, waveHeight);
 	
 	}
 	normal = worldToView(normal);
@@ -183,6 +186,14 @@ void main() {
 
 	//Apply Beer-Lambert law 
 	color *= exp(-mix(WATER_ABSORP, WATER_ABSORP_FOG, fog) * distanceTransmitted*2.0);
+
+	//Scattering
+	vec3 scatter = (vec3(8, 15, 18)/255.0);
+	color = mix(color, scatter, (1.0-exp(-distanceTransmitted*0.2))*day*(1.0-fog)*0.99);
+
+	// vec3 H = normalize(waveHeight + viewToWorld(sunPosition));
+	// float viewDotH = pow(clamp01(dot(depthWorldDir, -H)), 5.0);
+	// color = color + (1.0 - WATER_ABSORP)*viewDotH;
 
 	vec3 specularity = vec3(0.1, 0.02, 0.0);
 
@@ -234,6 +245,7 @@ void main() {
 	// }
 	float volumetricRadiance = texture2D(colortex1, texcoord).a;
 	color = mix(color, reflectionCol + sunSpecular, fresnel);
+	// color += (color, reflectionCol + sunSpecular)*fresnel;
 	color = applyFog(color, length(depthWorldPoint), cameraPosition, normalize(depthWorldPoint), volumetricRadiance);//Apply fog to complete water
 
 
