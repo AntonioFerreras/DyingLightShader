@@ -78,13 +78,13 @@ void main() {
 	//Dont update on pixels very close to edge of the screen to avoid 'windshield wiper' artifact
 	if(all(lessThan(screenCoords, vec2(1.0) - pixelSize*4)) && all(greaterThan(screenCoords, vec2(0.0) + pixelSize*4))
 		&& rayDirView.z < 0.0) {
-		color = textureLod(gcolor, screenCoords, 0.0).rgb;
+		color = max(textureLod(gcolor, screenCoords, 0.0).rgb, 0.0);
 		float depth = textureLod(depthtex0, screenCoords, 0.0).r;
 		dist = length(getDepthPoint(screenCoords, depth));
 
 	} else {
 		//Discard if not acutally visible
-		color = textureLod(colortex7, texcoord, 0.0).rgb;
+		color = max(textureLod(colortex7, texcoord, 0.0).rgb, 0.0);
 		dist = textureLod(colortex7, texcoord, 0.0).a;
 	}
 

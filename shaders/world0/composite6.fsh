@@ -45,10 +45,10 @@ float calculateAverageLuminance() {
 
     float avglod = int(exp2(min(viewWidth, viewHeight))) - 1;
 
-	float averagePrevious = texture2DLod(colortex6, vec2(0.0), 0.0).a;
+	float averagePrevious = max(texture2DLod(colortex6, vec2(0.0), 0.0).a, 0.0);
     float averageCurrent  = clamp(sqrt(dot(texture2DLod(gcolor, vec2(0.5), avglod).rgb, vec3(0.2125, 0.7154, 0.0721))), minLumaRange, maxLumaRange)*2.5;
 
-    return mix(averagePrevious, averageCurrent, exposureDecay);
+    return max(mix(averagePrevious, averageCurrent, exposureDecay), 0.0);
 }
 
 

@@ -131,7 +131,8 @@ void main() {
 	    if(flashlightOn > 0.9) {
 	    	flashlightSpecular = ggx(normal, -depthViewDir, -depthViewDir, specular, albedo)*flashlightOn*min(flashlight, 0.6)*FLASLIGHT_BRIGHTNESS;
 	    }
-	    vec3 specularCol = applyFog(reflectionCol + sunSpecular + flashlightSpecular + heldLightSpecular, length(depthWorldPoint), cameraPosition, normalize(depthWorldPoint), volumetricRadiance);//Apply fog to speculars
+	    vec3 specularCol = reflectionCol + sunSpecular + flashlightSpecular + heldLightSpecular;
+		specularCol = applyFog(reflectionCol + sunSpecular + flashlightSpecular + heldLightSpecular, length(depthWorldPoint), cameraPosition, normalize(depthWorldPoint), volumetricRadiance);//Apply fog to speculars
 	    // color = mix(color, specularCol, fresnel);
 		// color += albedo*specularCol;
 		if(isMetal(specTex.g)) {
