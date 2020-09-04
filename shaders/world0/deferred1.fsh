@@ -184,7 +184,7 @@ void main() {
 		
 	//AMBIENT
 	float ao = texture2D(gcolor, texcoord).a;
-	vec3 dayAmbient = mix(texture2D(colortex5, vec2(1.0)).rgb, vec3(0.15), 0.75);
+	vec3 dayAmbient = mix(texture2D(colortex5, vec2(1.0)).rgb, vec3(0.15), 0.7);
 	vec3 ambient = mix(dayAmbient, nightAmbient, pow(night, 0.5));//*1.3
 	ambient = ambient*pow2(lm.y)*ao*AMBIENT_INTENSITY;
 	vec3 blockLight = pow2(lm.x)*lightCol*EMITTER_INTENSITY;
