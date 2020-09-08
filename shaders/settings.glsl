@@ -15,7 +15,7 @@
 //Atmosphere
 
 #define PRIMARY_STEPS 16 // Number of steps for the primary rays (More = slower but prettier) [6 7 8 9 10 11 12 13 14 15 16 20 24 30 40]
-#define SECONDARY_STEPS 5 // Number of steps for the secondary rays (More = slower but prettier) [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16]
+#define SECONDARY_STEPS 2 // Number of steps for the secondary rays (More = slower but prettier) [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16]
 
 #define PRIMARY_STEPS_LOD 4
 #define SECONDARY_STEPS_LOD 0
@@ -39,12 +39,16 @@
 #define MIE_PREFERRED_DIR 0.758
 
 //Sunlight
-#define SUN_BRIGHTNESS 3.5 // [0.5 0.75 1.0 1.25 1.5 1.75 2.0 2.25 2.5 2.75 3.0 3.25 3.5 3.75 4.0 4.25 4.5 4.75 5.0 5.5 6.0 7.0]
+#define SUN_BRIGHTNESS 3.5 // [0.0 0.25 0.5 0.75 1.0 1.25 1.5 1.75 2.0 2.25 2.5 2.75 3.0 3.25 3.5 3.75 4.0 4.25 4.5 4.75 5.0 5.5 6.0 7.0]
 // #define SHADOW_KERNEL_SIZE 7 // Higher = Smoother but slower [3 5 7 9 11 13]
 
 //Ambient occlusion
 #define AMBIENT_INTENSITY 1.25 // [0.5 0.75 1.0 1.25 1.5 1.75 2.0]
 // #define RTAO_ENABLED // Ray traced Ambient Occlusion
+
+//GLOBAL ILLUMINATION
+#define ERGI_ENABLED // Equi-rectangular buffer global illumination
+#define ERGI_RAYS 6 // Equirectangular GI rays [1 2 4 6 8 12 24]
 
 //Block light
 #define EMITTER_INTENSITY 1.0 // Brightness of light emitting blocks // [0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0 2.2 2.4 2.6 2.8 3.0 3.5 4.0]

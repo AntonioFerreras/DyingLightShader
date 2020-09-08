@@ -4,6 +4,10 @@ uniform sampler2D lightmap;
 uniform sampler2D texture;
 uniform sampler2D normals;
 uniform sampler2D specular;
+uniform sampler2D colortex1;
+uniform sampler2D colortex2;
+uniform float viewWidth;
+uniform float viewHeight;
 uniform mat4 gbufferProjection;
 uniform mat4 gbufferModelView;
 uniform mat4 gbufferModelViewInverse;
@@ -38,7 +42,8 @@ void main() {
     vec4 normalTex = getTangentNormals(texcoord.st);
     vec3 normal = normalize(normalTex.rgb * tbnMatrixWorld);
     vec3 flatNormal = normalize(vec3(0,0,1) * tbnMatrixWorld);
-    float encodedFlatNormal = encode3x16(flatNormal * 0.5 + 0.5); 
+    float encodedNormal = encodeNormal3x16(normal); 
+    float encodedFlatNormal = encodeNormal3x16(flatNormal); 
 	float depth = normalTex.w;
 
     // normal = worldToView(normal, 0.0);
@@ -50,9 +55,14 @@ void main() {
     float subsurface = 0.0;
     subsurface = sign(isBanner)*1.0;
 
-/* DRAWBUFFERS:0234 */
+    float emissiveAndSubsurface = encode2x16(vec2(0.0, subsurface*0.5));
+
+    vec2 uv = gl_FragCoord.xy/vec2(viewWidth, viewHeight);
+    
+
+/* DRAWBUFFERS:0134 */
 	gl_FragData[0] = color; //gcolor
-	gl_FragData[1] = vec4(normal* 0.5 + 0.5, encodedFlatNormal); //gnormal
-    gl_FragData[2] = vec4(specularity, subsurface); //colortex3
+	gl_FragData[1] = vec4(texture2D(colortex1, uv).rgb, encodedNormal); //colortex1
+    gl_FragData[2] = vec4(specularity.rg, emissiveAndSubsurface, encodedFlatNormal); //colortex3
 	gl_FragData[3] = vec4(lmcoord, 0.0, 0.0); //colortex4
 }

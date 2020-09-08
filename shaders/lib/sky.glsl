@@ -16,6 +16,7 @@ vec2 rsi(vec3 r0, vec3 rd, float sr) {
 }
 
 vec3 atmos(vec3 r, vec3 r0, vec3 pSun, float iSteps, float jSteps, float Intensity) {
+
     vec3 kRlh = vec3(RAYLEIGH_COEFF_R, RAYLEIGH_COEFF_G, RAYLEIGH_COEFF_B);
 
     // Normalize the sun and view directions.
@@ -120,7 +121,6 @@ vec3 sampleSky(vec3 r, vec3 r0, vec3 pSun, vec3 pMoon, bool isLowQuality) {
         }
         vec3 sunAngle = vec3(pSun.x, -0.4, pSun.z);
         color += pow(vec3(253, 212, 125)/255.0, vec3(5.2))*clamp(pow64(min(1.0 + r.y, 1.0))*pow(1.0-night, 3)*sunset*pow(dot(r, sunAngle), 3.0), 0.0, 0.99);
-        // color = mix(color, pow(vec3(253, 212, 125)/255.0, vec3(5.2)), clamp(pow64(min(1.0 + r.y, 1.0))*pow(1.0-night, 3)*sunset*pow(dot(r, sunAngle), 3.0), 0.0, 0.99));
         return color;
     } else {
         return atmos(r, r0, pSun, PRIMARY_STEPS_LOD, SECONDARY_STEPS_LOD, ATMOSPHERE_INTENSITY);

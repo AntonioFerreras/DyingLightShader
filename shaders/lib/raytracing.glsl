@@ -38,15 +38,54 @@ vec3 getReflectionColour(vec3 reflectedPos, vec3 reflectedDir, vec3 depthWorldPo
     return reflectionCol;
 }
 
-// vec3 binarySearch(vec3 origin, vec3 direction, int iterationLimit) {
-// 	float deltaDepth = 1;
-// 	while (iterationLimit-- != 0 && deltaDepth > 0.001) {
-// 		deltaDepth = origin.z - texture(positionInGBuffer, convertViewSpaceToTextureSpace(origin)).z;
-// 		origin += (deltaDepth > 0) ? direction : -direction;
-// 		direction /= 2;
-// 	}
-// 	return origin;
-// }
+vec4 raymarchEquiGI(vec3 start, vec3 rd, int steps, float size, float growth) {
+	// if(rd.z > 0.0) {
+	// 	return vec4(0.0);
+	// }
+
+	vec3 ro = start;
+	float dist = 0.0;
+	float dir = 1.0;
+	float stepSize = size;
+	int goodInterection = 0;
+
+	// ro = start + rd*stepSize*dither;
+	
+	for(int i = 0; i < steps; i++) {
+		//March ray
+		dist += stepSize;
+		ro = start + rd*dist;
+
+		// vec2 screenCoord = viewToScreen(ro);
+		// if(any(greaterThan(screenCoord, vec2(1.0))) || any(lessThan(screenCoord, vec2(0.0)))) {
+		// 	return vec4(ro, length(ro));
+		// }
+
+		//Get depth & difference
+		float depthDist = samplePanoramic(viewToWorld(ro), 0.0).a;
+		float rayCamDist = length(ro);
+		float depth_diff = depthDist - rayCamDist;
+
+		//Get normal
+		// vec3 normal = worldToView(samplePanoramicNormal(viewToWorld(ro)).rgb * 2.0 - 1.0);
+
+		//Check if ray went behind depth
+		if(depth_diff <= 0.0 && depth_diff > -stepSize*2.2 && i > 0) {//   && depth_diff > -stepSize*1.5  && dot(normal, -rd) > 0.0
+			goodInterection = 1;
+			return vec4(ro, distance(start, ro));
+		} else {
+			goodInterection = 0;
+		}
+
+		stepSize *= growth;
+
+	}
+	// return vec4(0.0);
+	return vec4(ro, distance(start, ro)) * goodInterection;
+
+	
+
+}
 
 const float rayStepSize = 1.0;//0.3;
 

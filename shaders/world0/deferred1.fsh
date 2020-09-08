@@ -2,211 +2,147 @@
 
 #extension GL_ARB_shader_texture_lod : enable
 
-/*
-const bool colortex7MipmapEnabled = true;
-*/
-
 uniform sampler2D gcolor;
 uniform sampler2D depthtex0;
-uniform sampler2D gnormal;
-uniform sampler2D noisetex;
 uniform sampler2D colortex1;
+uniform sampler2D colortex2;
 uniform sampler2D colortex3;
 uniform sampler2D colortex4;
 uniform sampler2D colortex5;
 uniform sampler2D colortex7;
+uniform sampler2D noisetex;
 uniform mat4 gbufferProjection;
 uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelView;
 uniform mat4 gbufferModelViewInverse;
-uniform mat4 gbufferPreviousModelView;  
-uniform float viewHeight, viewWidth;
-uniform vec3 cameraPosition;
-uniform vec3 sunPosition; 
-uniform vec3 moonPosition;
-uniform vec3 upPosition;
 uniform mat4 shadowProjection;
 uniform vec3 shadowLightPosition;
 uniform mat4 shadowModelView;
 uniform mat4 shadowModelViewInverse;    
-uniform float frameTimeCounter;
+uniform vec3 sunPosition;
+uniform vec3 moonPosition;
+uniform vec3 cameraPosition;
+uniform vec3 upPosition;
+uniform float viewHeight;
+uniform float viewWidth;
+uniform float near;
 uniform float far;
-uniform float day;
-uniform float fog;
-uniform float night;
+uniform float farDist;
 uniform float sunset; 
-uniform float wetness; 
+uniform float night; 
 uniform float sunrise; 
 uniform ivec2 eyeBrightness;
+uniform float fog;
+uniform float day;
+uniform float wetness;
+uniform float frameTimeCounter;
+uniform int frameCounter;
+uniform vec3 previousCameraPosition;
+uniform mat4 gbufferPreviousModelView;
+uniform mat4 gbufferPreviousProjection;
 
 varying vec2 texcoord;
 
-// colortex0 = gcolor = game colour.rgb + vanillaAO.a
-// colortex1 = raytraceColour.rgb + volumetricRadiance.a
-// colortex2 = normals.rgb + flatnormals.a
-// colortex3 = specularity.rg + emission.b + subsurface.a
-// colortex4 = lightmaps.rg + transMask.b + isWater.a 
-// colortex5 = sky / albedo.rgb + shadow.a
-// colortex6 = TAA.rgb
-// colortex7 = temporal buffer for super secret operation
-
 #include "/settings.glsl"
-#include "/lib/resScales.glsl"
 #include "/lib/utility/common_functions.glsl"
 #include "/lib/utility/constants.glsl"
-#include "/lib/utility/texture_filter.glsl"
-#include "/lib/view.glsl"
+#include "/lib/resScales.glsl"
 #include "/lib/math.glsl"
+#include "/lib/view.glsl"
 #include "/lib/sky.glsl"
-#include "/lib/survivor_sense.glsl"
-#include "/lib/flashlight.glsl"
-#include "/lib/shadows.glsl"
 #include "/lib/materials.glsl"
+#include "/lib/flashlight.glsl"
 #include "/lib/sun.glsl"
+#include "/lib/shadows.glsl"
+#include "/lib/encoding.glsl"
 #include "/lib/volumetrics.glsl"
 #include "/lib/raytracing.glsl"
+#include "/lib/taa_functions.glsl"
 
-vec3 dayLightCol = blackbody(DAY_EMITTER_TEMP)*EMITTER_INTENSITY*0.1;
-vec3 nightLightCol = vec3(0, 2, 117)/255.0 * 2.0;
-#ifdef NIGHT_TIME_UV
-vec3 lightCol = mix(dayLightCol, nightLightCol, pow4(night));
-#else
-vec3 lightCol = dayLightCol;
-#endif
-// const vec3 dayAmbient = mix(vec3(12, 17, 51)/255.0, vec3(0.5), 0.99)*0.18;
-const vec3 nightAmbient = vec3(9, 16, 41)/255.0 * 0.03;
-
-vec3 flashLightCol = blackbody(FLASHLIGHT_TEMP);
-
-vec3 directLight(vec3 p, vec3 n, out float sunShadow) {
-	if(day < 0.001 || fog > 0.99) {
-		return vec3(0.0);
-	}
-	sunShadow = shadow(p, n);
-	return clamp(dot(normalize(sunPosition), n), 0.0, 1.0) * SUN_BRIGHTNESS * sunCol * sunShadow * day;
-}
-
-vec2 getVelocity() {
-	vec3 previousRDWorld = (inverse(gbufferPreviousModelView) * vec4(0, 0, -1, 0)).xyz;
-	return worldToView(previousRDWorld).xy;
-}
-
-vec3 subsurface(vec3 viewPoint, vec3 lightDir) {
-	vec3 worldPoint = viewToWorld(viewPoint);
-
-	vec4 playerPos = gbufferModelViewInverse * vec4(viewPoint, 1.0);
-	vec4 shadowPos = shadowProjection * (shadowModelView * playerPos); //convert to shadow screen space
-	float distortFactor = getDistortFactor(shadowPos.xy);
-	shadowPos.xyz = distort(shadowPos.xyz, distortFactor); //apply shadow distortion
-	shadowPos.xyz = shadowPos.xyz * 0.5 + 0.5; //convert from -1 ~ +1 to 0 ~ 1
-	float shadowBias =  SHADOW_BIAS * (distortFactor * distortFactor);
-	// shadowPos.z -= shadowBias; //apply shadow bias
-	shadowPos.z -= 0.0001;
-
-	float shadowZ = texture2D(shadowtex0, shadowPos.xy).r;
-
-	float travelDist = shadowPos.z - shadowZ;
-
-	vec3 sunLight = SUN_BRIGHTNESS * sunCol * day;
-
-	float VdotL = clamp(dot(-normalize(viewPoint), -lightDir), 0.0, 1.0);
-	VdotL = max(pow(VdotL, 3.0), 0.3);
-
-
-
-	if(travelDist < 0.0)  {
-		return sunLight * VdotL;
-	}
-	// return max(sunLight * (travelDist/0.1), vec3(0.0));
-	return sunLight*exp(-travelDist*1000.00) * VdotL;
-}
+/******************  CALCULATE RTAO & GI  ******************/
 
 void main() {
-	vec3 color = texture2D(gcolor, texcoord).rgb;
-	vec3 normal = texture2D(gnormal, texcoord).rgb * 2.0 - 1.0;
-	normal = worldToView(normal);
-	vec3 specular = texture2D(colortex3, texcoord).rgb;
+	vec3 lighting = vec3(0.0);
+
+	vec2 uv = texcoord * invRtaoResScale;
+	float depth = texture2D(depthtex0, uv).r;
+	float depthDist = getDepthPoint(uv, depth).z;
+	vec3 specular = texture2D(colortex3, uv).rgb;
 	specular = parseSpecular(specular);
 
-	float isEmissive = texture2D(colortex3, texcoord).b;
+	vec3 normal = decodeNormal3x16(texture2D(colortex1, uv).a);
 
-	float subsurfaceAmount = texture2D(colortex3, texcoord).a;
+	if(all(lessThan(texcoord, vec2(rtaoResScale))) && depth != 1.0) {
 
-	float depth0 = texture2D(depthtex0, texcoord).r;
-	vec4 lm = texture2D(colortex4, texcoord);
-	lm.x = pow(lm.x, 2.2) * 1.3;
-
-	if(length(normal) < 0.01) {
-		/* DRAWBUFFERS:05 */
-		gl_FragData[0] = vec4(toLinear(color), 1.0); //gcolor
-		gl_FragData[1] = vec4(vec3(1.0), 1.0); // colortex5
-		return;
-	}
-
-	if(depth0 == 1.0) {
-		color = texture2D(colortex5, texcoord*atmosResScale).rgb;
-		/* DRAWBUFFERS:0 */
-		gl_FragData[0] = vec4(color, 1.0); //gcolor
-		return;
-	}
-	
-
-
-	vec3 depth0ViewPoint = getDepthPoint(texcoord, depth0);
-	vec3 depth0WorldPoint = viewToWorld(depth0ViewPoint);
-
-	vec3 rayDir = normalize(depth0ViewPoint);
-
-	vec2 velocity = getVelocity();
-
-	//FLASHLIGHT
-	float flashlightOn = float(night > 0.4 || pow2(eyeBrightness.x+eyeBrightness.y) < 60);
-	float flashlight = getFlashlight(texcoord - clamp(velocity*FLASHLIGHT_LAG_AMOUNT, -0.6, 0.6), length(depth0ViewPoint))*clamp(dot(normal, vec3(0,0,1)), 0.2, 1.0)*flashlightOn;
-
-	vec3 albedo = vec3(0.0);
-	vec3 sunDir = normalize(sunPosition);
-	float sunShadow = 0.0;
-	albedo = toLinear(color);
-	albedo *= vec3(245,236,217)/255.0;
-
-	#ifdef WHITE_WORLD
-	albedo = vec3(1.0);
-	#endif
-	
-	//SUNLIGHT
-	float noise_1 = fract(texture2D(noisetex, mod(gl_FragCoord.xy, 512.0)/512.0).r + frameTimeCounter*4.12348543);
-	float noise_2 = fract(texture2D(noisetex, mod(gl_FragCoord.xy+0.5, 512.0)/512.0).r + frameTimeCounter*4.12348543);
-	float noise_3 = fract(texture2D(noisetex, mod(gl_FragCoord.xy-0.5, 512.0)/512.0).r + frameTimeCounter*4.12348543);
-	vec3 noise = vec3(noise_1, noise_2, noise_3) * 2.0 - 1.0; // -1 to 1
-	vec3 sunLight = directLight(depth0ViewPoint+noise*0.02, normal, sunShadow) * (1.0-fog);
-	// vec3 foggedSunLight = applyFog(sunLight, 9999.0, depth0WorldPoint + cameraPosition, viewToWorld(sunDir), 1.0);
-	// sunLight = mix(sunLight, foggedSunLight, sunShadow);
+		vec3 depthViewPoint = getDepthPoint(uv, depth);
+		vec3 depthWorldPoint = viewToWorld(depthViewPoint);
 		
-	//AMBIENT
-	float ao = pow3(texture2D(gcolor, texcoord).a);
-	vec3 dayAmbient = mix(texture2D(colortex5, vec2(1.0)).rgb, vec3(0.15), 0.7);
-	vec3 ambient = mix(dayAmbient, nightAmbient, pow(night, 0.5));//*1.3
-	ambient = ambient*pow2(lm.y)*ao*AMBIENT_INTENSITY;
-	vec3 blockLight = pow2(lm.x)*lightCol*EMITTER_INTENSITY;
+		vec4 lm = texture2D(colortex4, uv);
+		lm.x = pow(lm.x, 2.2);
 
-	//Subsurface
-	if(subsurfaceAmount > 1.599) { // Make grass SSS have nice gradient
-		float y = mod(depth0WorldPoint.y + cameraPosition.y + gbufferModelViewInverse[3].y, 1.0);
-		subsurfaceAmount *= pow(1.5*y, 2.0) + 0.15;
+		//Ray quality
+		// int raySteps = 8;
+		// float stepSize = 1.0;
+		// float growth = 1.0;
+		// if(lm.x > 0.3) {
+		// 	raySteps = 12;
+		// 	stepSize = 0.1;
+		// 	growth = 1.0;
+		// }
+		int raySteps = int(mix(8, 15, pow(lm.x, 0.3)));
+		float stepSize = mix(1.0, 0.1, pow(lm.x, 0.3));
+		float growth = (lm.x < 0.01) ? 1.3 : 1.0;
+
+		float ao = pow3(texture2D(gcolor, uv).a);
+
+		vec3 indirect = vec3(0.0);
+
+		//generate seed
+		float seed = random(uv, frameTimeCounter);
+
+		//Calculate indirect
+		for(int i = 0; i < ERGI_RAYS; i++) {
+			vec3 reflectedDir = cosWeightedRandomHemisphereDirection(normal, seed);//reflect(depthViewDir, normal);
+
+			vec3 reflectionPos = vec3(0.0);
+
+			reflectionPos = raymarchEquiGI(depthViewPoint + normal*0.01, reflectedDir, raySteps, stepSize, growth).xyz;
+			if(all(equal(reflectionPos, vec3(0.0)))) {
+				float dist = samplePanoramic(viewToWorld(reflectedDir), 0.0).a;
+				reflectionPos = reflectionPos + reflectedDir*dist;
+			}
+
+			float dist = samplePanoramic(viewToWorld(reflectedDir), 0.0).a;
+			float closeness = clamp(pow2(clamp(dist, 0.0, 2.0)), 0.3, 1.0);
+
+			//If the ray went to sky, make it affected by sky lightmap
+			float isSky = float(samplePanoramic(viewToWorld(reflectedDir), 0.0).a > 90);
+			float skyAmount = mix(1.0, pow2(lm.y), isSky);
+
+			indirect += getReflectionColour(reflectionPos, reflectedDir, depthWorldPoint, 5.0)*skyAmount;
+		}
+		indirect /= ERGI_RAYS;
+
+		//Make indirect more saturated
+		// indirect = mix(indirect, vec3(Luminance(indirect)), vec3(1.0 - 1.15));
+		lighting += indirect;
+
 	}
-	vec3 subsurface = subsurface(depth0ViewPoint+noise*0.02, sunDir) * subsurfaceAmount * max(1.0-fog, 0.1);
+	vec2 reprojectedCoords = reproject(vec3(uv, texture2D(depthtex0, uv).r));
+	vec3 history = textureLod(colortex2, reprojectedCoords*rtaoResScale, 0.0).rgb;
 
-	//EMission
-	vec3 emission = pow(length(albedo), 4.0) * isEmissive * lightCol * 30.0 * albedo;
+	float previousDepth = texture2D(depthtex0, reprojectedCoords).r;
+	float previousDist = getDepthPoint(reprojectedCoords, previousDepth).z;
+	vec3 previousNormal = decodeNormal3x16(texture2D(colortex1, reprojectedCoords).a);
 
-	// vec3 irradiance = samplePanoramic(viewToWorld(normal), 3).rgb;
-	// vec3 indirectRayPos = raymarchEqui(depth0ViewPoint, normal).xyz;
-	// vec3 irradiance = samplePanoramic(viewToWorld(indirectRayPos), 8).rgb;
+	float weight = 0.9;
+	if( clamp(reprojectedCoords, 0.0, 1.0) != reprojectedCoords) {
+		weight = 0.0;
+	}
 
-	//Apply scene lighting
-	color = albedo*(sunLight + ambient + blockLight + min(flashlight*flashLightCol, 0.6)*FLASLIGHT_BRIGHTNESS + subsurface) + emission;
+	vec3 write = mix(lighting, history, weight);
 
-/* DRAWBUFFERS:05 */
-	gl_FragData[0] = vec4(color, 1.0); //gcolor
-	gl_FragData[1] = vec4(albedo, sunShadow); // colortex5
+
+/* DRAWBUFFERS:2 */
+	gl_FragData[0] = vec4(write, texture2D(colortex2, texcoord).a); //colortex2 (ao gi accumulate)
 }

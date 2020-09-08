@@ -13,6 +13,7 @@ uniform sampler2D colortex6;
 uniform sampler2D colortex7;
 uniform sampler2D colortex4;
 uniform sampler2D colortex1;
+uniform sampler2D colortex2;
 uniform sampler2D depthtex0;
 uniform float frameTimeCounter;
 uniform float wetness;
@@ -31,15 +32,7 @@ uniform vec3 upPosition;
 
 
 /*
-const int colortex0Format = RGBA16F;
-const int colortex1Format = RGBA16F;
-const int colortex2Format = RGBA16_SNORM;
-const int colortex4Format = RGBA16_SNORM;
-const int colortex3Format = RGBA16F;
-const int colortex5Format = RGBA16F;
-const int colortex6Format = RGBA16F;
-const int colortex7Format = RGBA16F;
-const float sunPathRotation = -40.0f; 
+const float sunPathRotation = 20.0f; // Sun angle offset [-70 -60 -50 -40 -35 -30 -25 -20 -15 -10 -5 0 5 10 15 20 25 30 35 40 50 60 70]
 
 const float wetnessHalflife = 80.0;
 const float drynessHalflife = 80.0;
@@ -108,7 +101,7 @@ void main() {
 
     // ditherScreen(color);
 
-    // color = vec3(textureLod(colortex1, texcoord.st, 0.0).a);
+    // color = textureLod(colortex2, texcoord.st*0.5, 0.0).rgb;
 
 
     gl_FragColor = vec4(color.rgb, 1.0f);
