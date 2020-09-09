@@ -117,7 +117,8 @@ void main() {
 
 	float volumetricRadiance = texture2D(colortex2, texcoord).a;
 
-	if(depth == 1.0 || length(normal) < 0.01) {
+	//When sky or survivor sense'd mob
+	if(depth == 1.0 || texture2D(colortex1, texcoord).a == 1.0) {
 		discard;
 	}
 

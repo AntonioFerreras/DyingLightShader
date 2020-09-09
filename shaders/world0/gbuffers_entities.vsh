@@ -8,6 +8,8 @@ uniform int frameCounter;
 uniform float viewWidth;
 uniform float viewHeight;
 
+attribute vec4 at_tangent;
+
 varying vec2 lmcoord;
 varying vec2 texcoord;
 varying vec4 glcolor;
@@ -15,7 +17,7 @@ varying float highlight;
 varying float isPlayer;
 
 varying mat3 tbnMatrixWorld;
-attribute vec4 at_tangent;
+
 
 #include "/settings.glsl"
 #include "/lib/math.glsl"

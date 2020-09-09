@@ -68,16 +68,18 @@ void main() {
 
 		vec3 dirToCamera = -rayDirection(gl_FragCoord.xy/vec2(viewWidth, viewHeight));
 		float facing = dot(normal, dirToCamera);
+		facing = max(normal.z, 0.0);
 		color.rgb = mix(emissionColour, baseColour, smoothstep(0.0, 1.0, facing))*brightness*highlight*1.3;
 
-		normal = vec3(0.0);
+		encodedNormal = 1.0; 
+		encodedFlatNormal = 1.0;
 	}
 
 	normal = viewToWorld(normal);
 
 	vec2 uv = gl_FragCoord.xy/vec2(viewWidth, viewHeight);
 
-	float emissiveAndSubsurface = encode2x16(vec2(0.0, 0.25));
+	float emissiveAndSubsurface = encode2x16(vec2(0.0, 0.0));
 
 /* DRAWBUFFERS:0134 */
 	gl_FragData[0] = color; //gcolor
