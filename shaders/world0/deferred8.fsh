@@ -139,7 +139,7 @@ void main() {
 	lm.x = pow(lm.x, 2.2);
 
 	//Dont do shading on survior sense'd mobs
-	if(texture2D(colortex1, texcoord).a == 1.0) {
+	if(texture2D(colortex1, texcoord).a == 1.0 && depth0 != 1.0) {
 		/* DRAWBUFFERS:05 */
 		gl_FragData[0] = vec4(toLinear(color), 1.0); //gcolor
 		gl_FragData[1] = vec4(vec3(1.0), 1.0); // colortex5
