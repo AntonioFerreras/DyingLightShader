@@ -47,7 +47,7 @@
 // #define RTAO_ENABLED // Ray traced Ambient Occlusion
 
 //GLOBAL ILLUMINATION
-#define ERGI_ENABLED // Equi-rectangular buffer global illumination
+//#define ERGI_ENABLED // Equi-rectangular buffer global illumination
 #define ERGI_RAYS 6 // Equirectangular GI rays [1 2 4 6 8 12 24]
 
 //Block light
